@@ -9,6 +9,12 @@ This repository is the **template**, not an instance. It contains conventions, s
 scaffolding, and optional tools. Instances (e.g. `work-cortex`, `personal-cortex`) are
 created by copying `template/` and are where actual content lives.
 
+## Requirements
+
+- Git
+- Windows PowerShell 5.1+ or PowerShell 7+ (all scripts are dependency-free — no
+  modules, no package installs required)
+
 ## Principles
 
 1. **The Markdown files are the system.** No tool, script, index, or agent should be
@@ -107,3 +113,9 @@ normal local Git repository — no separate backup step is required by default.
 monthly, or before a risky bulk-agent operation): it writes a `git bundle` (full
 history) and a `.zip` (flat restore fallback) plus a `manifest.json` to a backup
 destination.
+
+## License
+
+Licensed under the [GNU General Public License v3.0](LICENSE). You are free to use,
+study, modify, and redistribute this template and its generated instances, provided
+derivative works remain under the same license.

@@ -1,4 +1,30 @@
+# OS / editor noise
 Thumbs.db
 .DS_Store
 *.tmp
+*.swp
+*~
+.vscode/
+.idea/
+
+# Instance-local derived/generated data (never gitignore canonical content)
+_meta/index.json
+_meta/index.sqlite
+_meta/cache/
+
+# Node-based tools (webui/, timeline/, importers/)
 node_modules/
+dist/
+build/
+.env
+.env.local
+npm-debug.log*
+
+# Python-based tools, if any are added later
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Logs
+*.log
