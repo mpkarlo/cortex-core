@@ -66,21 +66,88 @@ consumes the same derived index contract (`_meta/index.json`, see
 be added, removed, or split into their own repository later without touching content
 or other tools.
 
-## Creating an instance
+## Quick start
+
+These steps create a new Cortex instance from this template. Run them in Windows
+PowerShell; no dependencies beyond Git are required.
+
+### 1. Clone this repository
 
 ```powershell
-git clone https://github.com/<you>/cortex-core.git
-.\cortex-core\init.ps1 -InstanceName "work-cortex" `
-                            -Owner "Karlo" `
-                            -Profile work `
-                            -TargetPath "C:\Users\karlom\OneDrive - Microsoft\Cortex\work-cortex" `
-                            -Remote "" 
+git clone https://github.com/<you>/cortex-core.git C:\Users\<you>\Code\cortex-core
+cd C:\Users\<you>\Code\cortex-core
 ```
 
-`init.ps1` copies `template/` to `-TargetPath`, stamps `{{OWNER}}` / `{{INSTANCE_NAME}}` /
-`{{PROFILE}}` / `{{CREATED_DATE}}` tokens into `README.md`, `AGENTS.md`, and
-`.github/copilot-instructions.md`, writes `_meta/config.json`, runs `git init`, and makes
-the first commit. See `init.ps1 -?` for all parameters.
+### 2. Choose where the instance will live
+
+Pick a stable, backed-up, synced location — for example a folder inside OneDrive
+for a work instance, or a personal cloud-synced folder for a personal instance.
+Do not nest it inside `cortex-core` itself.
+
+```powershell
+$target = "C:\Users\<you>\OneDrive - Microsoft\Cortex\work-cortex"
+```
+
+### 3. Run `init.ps1`
+
+```powershell
+.\init.ps1 -InstanceName "work-cortex" `
+           -Owner "<Your Name>" `
+           -Profile work `
+           -Classification "Internal - personal work notes, no secrets, no unredacted PII" `
+           -TargetPath $target `
+           -Timezone "Eastern Standard Time"
+```
+
+- `-Profile` is `work` or `personal`.
+- Omit `-Remote` for now — add it later once you've created a remote for the
+  instance itself (see step 5). The instance does not need to share a remote
+  with `cortex-core`.
+
+This copies `template/` to `$target`, stamps `{{OWNER}}`, `{{INSTANCE_NAME}}`,
+`{{PROFILE}}`, `{{CLASSIFICATION}}`, `{{CREATED_DATE}}`, and `{{TIMEZONE}}` tokens
+into `README.md`, `AGENTS.md`, and `.github/copilot-instructions.md`, writes
+`_meta/config.json`, runs `git init -b main`, and makes the first commit. See
+`.\init.ps1 -?` for the full parameter list.
+
+### 4. Verify the instance
+
+```powershell
+cd $target
+.\_meta\scripts\validate.ps1
+```
+
+This should report `0 errors` on a freshly created instance. Run it again any time
+after an agent (or you) make bulk edits.
+
+### 5. Try creating a note
+
+```powershell
+.\_meta\scripts\new-note.ps1 -Type project -Title "My First Project"
+```
+
+This creates `10-projects\project-my-first-project.md` from the project template
+with frontmatter already filled in. Open it, or point an AI agent at the instance
+and ask it to file a note — see `AGENTS.md` for the roles an agent should assume
+(Reader / Curator / Specialist) and `.github/copilot-instructions.md` for how
+Copilot-style tools should behave in this repository.
+
+### 6. (Optional) Add a remote for the instance
+
+The instance is its own Git repository, independent of `cortex-core`. If you want
+a remote backup/sync beyond the synced folder it already lives in:
+
+```powershell
+git remote add origin <instance-remote-url>
+git push -u origin main
+```
+
+### 7. Repeat for a second instance
+
+Run `init.ps1` again with a different `-InstanceName`, `-Profile`, and
+`-TargetPath` (e.g. `personal-cortex` in a personal cloud-synced folder). Each
+instance is independent; only `_meta/` scaffolding is ever shared between them,
+via `sync.ps1` — see "Keeping an instance up to date with the template" below.
 
 ## Keeping an instance up to date with the template
 
