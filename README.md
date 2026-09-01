@@ -178,13 +178,49 @@ Writes a `.bundle` (full Git history), a `.zip` (flat fallback), and a
 
 ### 7. (Optional) Add a remote for the instance
 
-The instance is its own Git repository, independent of `cortex-core`. If you want
-a Git remote in addition to (not instead of) the backup destination above:
+The instance is its own Git repository, independent of `cortex-core`. A remote is
+optional, but becomes necessary if you need the instance to **sync across
+multiple machines** (e.g. a work laptop and a home desktop) — the backup
+destination alone is a one-way snapshot, not a two-way sync mechanism.
+
+**Option A — hosted remote (GitHub/GitLab/Azure DevOps, private repo).**
+Simplest if you're comfortable putting the instance on a hosted git service:
 
 ```powershell
 git remote add origin <instance-remote-url>
 git push -u origin main
 ```
+
+**Option B — bare repo on cloud-synced storage (no hosted service needed).**
+Works well if you'd rather not host personal/work notes on a third-party service
+at all: create a *bare* Git repository inside a cloud-synced folder (OneDrive,
+iCloud Drive, Dropbox, etc.). The cloud-sync client mirrors the bare repo's files
+between machines exactly like any other file; each machine then treats it as a
+normal `origin` and syncs with ordinary `git push`/`git pull`. A dedicated
+`GitRemotes/` folder (not mixed in with note content or backups) keeps this
+reusable for other repos too, not just Cortex instances.
+
+```powershell
+# One-time setup (on the first machine):
+git init --bare "C:\Users\<you>\OneDrive\GitRemotes\<instance-name>.git"
+cd $target
+git remote add origin "C:\Users\<you>\OneDrive\GitRemotes\<instance-name>.git"
+git push -u origin main
+```
+
+```powershell
+# On each additional machine, once OneDrive has synced the bare repo there:
+git clone "C:\Users\<you>\OneDrive\GitRemotes\<instance-name>.git" "C:\Users\<you>\Cortex\<instance-name>"
+cd "C:\Users\<you>\Cortex\<instance-name>"
+# git pull / git push as usual from here on
+```
+
+Caveat: because sync relies on the cloud-sync client mirroring files, avoid
+pushing from two machines at the same moment — resolve any conflicting sync
+copies the cloud provider creates the same way you would for any other
+file-synced Git repo. This is unrelated to `-BackupDestination`/`backup.ps1`,
+which remains a separate, periodic safety-net snapshot even when a sync remote
+is in use.
 
 ### 8. Repeat for a second instance
 
