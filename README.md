@@ -12,8 +12,10 @@ created by copying `template/` and are where actual content lives.
 ## Requirements
 
 - Git
-- Windows PowerShell 5.1+ or PowerShell 7+ (all scripts are dependency-free — no
-  modules, no package installs required)
+- PowerShell 7+ (`pwsh`) — cross-platform on Windows, Linux, and macOS. All scripts
+  are dependency-free (no external modules, no package installs required) and are
+  the single implementation for every platform; there is no separate Bash variant
+  to keep in sync.
 
 ## Principles
 
@@ -47,7 +49,7 @@ template/
   _meta/
     templates/      note templates for each type
     schemas/        frontmatter field definitions (JSON)
-    scripts/        validate.ps1, new-note.ps1, backup.ps1
+    scripts/        validate.ps1, new-note.ps1, backup.ps1, restore.ps1, sync.ps1
     ui/             reserved for a future local UI/visualization layer
   AGENTS.md          agent roles and write permissions
   .github/
@@ -58,6 +60,10 @@ tools/
   timeline/         optional, independent — timeline/visualization view
   importers/        optional, independent — data import scripts
   scripts/          small standalone utilities usable without any instance
+
+tests/
+  run-tests.ps1     dependency-free test suite covering init/new-note/validate/
+                    backup/restore end-to-end; run with `pwsh ./tests/run-tests.ps1`
 ```
 
 Each folder under `tools/` is independent: no tool depends on another tool. Every tool
@@ -66,26 +72,31 @@ consumes the same derived index contract (`_meta/index.json`, see
 be added, removed, or split into their own repository later without touching content
 or other tools.
 
-## Quick start
+## Creating an instance (quick start)
 
-These steps create a new Cortex instance from this template. Run them in Windows
-PowerShell; no dependencies beyond Git are required.
+These steps create a new Cortex instance from this template. Run them with `pwsh`
+(PowerShell 7+); no dependencies beyond Git are required. Examples below use
+Windows paths — substitute equivalent Linux/macOS paths as needed.
 
 ### 1. Clone this repository
 
 ```powershell
-git clone https://github.com/<you>/cortex-core.git C:\Users\<you>\Code\cortex-core
-cd C:\Users\<you>\Code\cortex-core
+git clone https://github.com/<you>/cortex-core.git ~/Code/cortex-core
+cd ~/Code/cortex-core
 ```
 
 ### 2. Choose where the instance will live
 
-Pick a stable, backed-up, synced location — for example a folder inside OneDrive
-for a work instance, or a personal cloud-synced folder for a personal instance.
-Do not nest it inside `cortex-core` itself.
+Default recommendation: a plain local path **outside** any cloud-synced folder
+(OneDrive, iCloud Drive, Dropbox, etc.). Keeping the working Git repo off a
+sync client avoids sync-induced file locks/conflicts during agent-driven bulk
+edits. Off-machine backup coverage instead comes from periodic snapshots to a
+cloud-synced destination — see step 6 and "Backups" below. Do not nest the
+instance inside `cortex-core` itself.
 
 ```powershell
-$target = "C:\Users\<you>\OneDrive - Microsoft\Cortex\work-cortex"
+$target = "C:\Users\<you>\Cortex\work-cortex"
+$backupDestination = "C:\Users\<you>\OneDrive - Microsoft\CortexBackups\work-cortex"
 ```
 
 ### 3. Run `init.ps1`
@@ -96,19 +107,25 @@ $target = "C:\Users\<you>\OneDrive - Microsoft\Cortex\work-cortex"
            -Profile work `
            -Classification "Internal - personal work notes, no secrets, no unredacted PII" `
            -TargetPath $target `
+           -BackupDestination $backupDestination `
            -Timezone "Eastern Standard Time"
 ```
 
 - `-Profile` is `work` or `personal`.
+- `-BackupDestination` is optional but recommended — it's recorded in
+  `_meta/config.json` so `backup.ps1` and the Archivist agent role have a default
+  target without needing it passed every time. You can set or change it later by
+  editing `_meta/config.json` directly.
 - Omit `-Remote` for now — add it later once you've created a remote for the
-  instance itself (see step 5). The instance does not need to share a remote
+  instance itself (see step 6). The instance does not need to share a remote
   with `cortex-core`.
 
 This copies `template/` to `$target`, stamps `{{OWNER}}`, `{{INSTANCE_NAME}}`,
-`{{PROFILE}}`, `{{CLASSIFICATION}}`, `{{CREATED_DATE}}`, and `{{TIMEZONE}}` tokens
-into `README.md`, `AGENTS.md`, and `.github/copilot-instructions.md`, writes
-`_meta/config.json`, runs `git init -b main`, and makes the first commit. See
-`.\init.ps1 -?` for the full parameter list.
+`{{PROFILE}}`, `{{CLASSIFICATION}}`, `{{CREATED_DATE}}`, `{{TIMEZONE}}`, and
+`{{BACKUP_DESTINATION}}` tokens into `README.md`, `AGENTS.md`, and
+`.github/copilot-instructions.md`, writes `_meta/config.json`, runs
+`git init -b main`, and makes the first commit. See `.\init.ps1 -?` for the full
+parameter list.
 
 ### 4. Verify the instance
 
@@ -120,34 +137,61 @@ cd $target
 This should report `0 errors` on a freshly created instance. Run it again any time
 after an agent (or you) make bulk edits.
 
-### 5. Try creating a note
+### 5. Create your first note — via an AI prompt
+
+The primary way to add content is by prompting an AI agent (e.g. "capture this as
+a project note about X"), not by running a script yourself. Point an agent at the
+instance and describe what you want captured; the agent assumes the Curator role
+described in `AGENTS.md` and calls `_meta/scripts/new-note.ps1` on your behalf,
+filing it under the right folder with frontmatter already filled in. If you
+supply your own freeform text or a reference document, the agent saves it as a
+linked attachment alongside the note rather than folding it into the note body —
+see "Primary intake path" in `AGENTS.md`.
+
+Running `new-note.ps1` directly still works and is useful for scripting or
+testing, but is not the expected day-to-day interface:
 
 ```powershell
 .\_meta\scripts\new-note.ps1 -Type project -Title "My First Project"
 ```
 
-This creates `10-projects\project-my-first-project.md` from the project template
-with frontmatter already filled in. Open it, or point an AI agent at the instance
-and ask it to file a note — see `AGENTS.md` for the roles an agent should assume
-(Reader / Curator / Specialist) and `.github/copilot-instructions.md` for how
-Copilot-style tools should behave in this repository.
+This creates `10-projects\project-my-first-project.md` from the project template.
+See `.github/copilot-instructions.md` for how Copilot-style tools should behave in
+this repository, and `AGENTS.md` for the full set of agent roles (Reader /
+Curator / Specialist / Archivist / Validator).
 
-### 6. (Optional) Add a remote for the instance
+### 6. Set up backups
+
+Instances live outside cloud sync by default (step 2), so periodic backup to
+cloud storage is how you get off-machine coverage. Either run it yourself or ask
+an agent to invoke the Archivist role ("back this up", "restore last week's
+backup"):
+
+```powershell
+.\_meta\scripts\backup.ps1
+```
+
+Uses `-BackupDestination` from step 3 (or pass `-DestinationPath` explicitly).
+Writes a `.bundle` (full Git history), a `.zip` (flat fallback), and a
+`manifest.json` to that destination. See "Backups" below and
+`_meta/scripts/restore.ps1` for recovery.
+
+### 7. (Optional) Add a remote for the instance
 
 The instance is its own Git repository, independent of `cortex-core`. If you want
-a remote backup/sync beyond the synced folder it already lives in:
+a Git remote in addition to (not instead of) the backup destination above:
 
 ```powershell
 git remote add origin <instance-remote-url>
 git push -u origin main
 ```
 
-### 7. Repeat for a second instance
+### 8. Repeat for a second instance
 
-Run `init.ps1` again with a different `-InstanceName`, `-Profile`, and
-`-TargetPath` (e.g. `personal-cortex` in a personal cloud-synced folder). Each
-instance is independent; only `_meta/` scaffolding is ever shared between them,
-via `sync.ps1` — see "Keeping an instance up to date with the template" below.
+Run `init.ps1` again with a different `-InstanceName`, `-Profile`, `-TargetPath`,
+and `-BackupDestination` (e.g. `personal-cortex`). Each instance is independent;
+only `_meta/` scaffolding is ever shared between them, via `sync.ps1` — see
+"Keeping an instance up to date with the template" below.
 
 ## Keeping an instance up to date with the template
 
@@ -174,12 +218,38 @@ inside a generated instance, and "Template evolution" below.
 
 ## Backups
 
-Instances are expected to live inside a synced storage location (e.g. OneDrive) as a
-normal local Git repository — no separate backup step is required by default.
-`_meta/scripts/backup.ps1` is provided as an optional, periodic safety net (e.g.
-monthly, or before a risky bulk-agent operation): it writes a `git bundle` (full
-history) and a `.zip` (flat restore fallback) plus a `manifest.json` to a backup
-destination.
+Instances live outside cloud-synced storage by default (see "Creating an
+instance" step 2), as a plain local Git repository — this keeps day-to-day and
+agent-driven bulk edits fast and free of sync-client locking/conflicts.
+Off-machine coverage instead comes from periodic snapshots pushed to a
+cloud-synced destination (OneDrive, iCloud Drive, Dropbox, etc.):
+
+- `_meta/scripts/backup.ps1` writes a `git bundle` (full history), a `.zip` (flat
+  restore fallback), and a `manifest.json` to `-DestinationPath` (or the
+  `backupDestination` recorded in `_meta/config.json` by `init.ps1`).
+- `_meta/scripts/restore.ps1` restores from either artifact: `-FromBundle`
+  (clones the bundle, preserving full Git history) or `-FromZip` (expands the
+  files only). Use `-Timestamp` to recover a specific historical snapshot
+  instead of the latest one.
+- The **Archivist** agent role (see `AGENTS.md`) can run backup/restore on your
+  behalf when explicitly invoked ("back this up", "restore last Tuesday's
+  snapshot") — it never runs automatically, and always confirms with you before
+  a restore, since restoring can discard newer uncommitted changes.
+
+Run `backup.ps1` periodically (e.g. daily/weekly, or before a risky bulk-agent
+operation) — there's no automatic scheduling built in; a scheduled task/cron job
+is a reasonable way to automate it if you want.
+
+## Testing
+
+```powershell
+pwsh ./tests/run-tests.ps1
+```
+
+Runs a dependency-free end-to-end check of `init.ps1`, `new-note.ps1`,
+`validate.ps1`, `backup.ps1`, and `restore.ps1` against disposable, temp-directory
+instances (cleaned up automatically). Run this after changing any script in
+`_meta/scripts/` or `init.ps1` before committing.
 
 ## License
 

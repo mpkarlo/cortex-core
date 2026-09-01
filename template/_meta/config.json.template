@@ -6,5 +6,6 @@
   "createdDate": "{{CREATED_DATE}}",
   "templateVersion": "{{TEMPLATE_VERSION}}",
   "mediaLibraryUrl": "",
+  "backupDestination": "{{BACKUP_DESTINATION}}",
   "timezone": "{{TIMEZONE}}"
 }

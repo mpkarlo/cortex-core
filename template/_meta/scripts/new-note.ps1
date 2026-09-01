@@ -56,7 +56,7 @@ $slug = ConvertTo-Slug -Text $Title
 $today = Get-Date -Format "yyyy-MM-dd"
 $dateSlug = Get-Date -Format "yyyyMMdd"
 
-$templatePath = Join-Path $RootPath "_meta\templates\$Type.md"
+$templatePath = Join-Path $RootPath (Join-Path "_meta" (Join-Path "templates" "$Type.md"))
 if (-not (Test-Path $templatePath)) {
   throw "No template found for type '$Type' at $templatePath"
 }
@@ -80,7 +80,7 @@ $content = $content -replace "\{\{DATESLUG\}\}", $dateSlug
 $content = $content -replace "\{\{DATE\}\}", $today
 $content = $content -replace "\{\{TITLE\}\}", $Title
 $content = $content -replace "\{\{OWNER\}\}", (
-  (Get-Content (Join-Path $RootPath "_meta\config.json") -Raw | ConvertFrom-Json).owner
+  (Get-Content (Join-Path $RootPath (Join-Path "_meta" "config.json")) -Raw | ConvertFrom-Json).owner
 )
 
 New-Item -ItemType Directory -Force -Path $targetFolder | Out-Null

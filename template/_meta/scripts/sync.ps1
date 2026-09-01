@@ -66,7 +66,7 @@ if ($Pull) {
     }
     if (Test-Path (Join-Path $RootPath "template")) {
       # The checkout above recreates the 'template/' prefix; flatten it into root.
-      Copy-Item -Path (Join-Path $RootPath "template\*") -Destination $RootPath -Recurse -Force
+      Copy-Item -Path (Join-Path (Join-Path $RootPath "template") "*") -Destination $RootPath -Recurse -Force
       Remove-Item -Path (Join-Path $RootPath "template") -Recurse -Force
     }
     Write-Host "Pulled latest _meta/, AGENTS.md, .github/ from template remote. Review 'git status' and commit." -ForegroundColor Green

@@ -1,23 +1,34 @@
 <#
 .SYNOPSIS
-  Optional periodic safety-net backup for a Cortex instance. Not required for
-  normal operation if the instance already lives in a synced location (e.g.
-  OneDrive) — this is an extra layer for before risky bulk-agent operations or
-  as a monthly snapshot.
+  Optional periodic safety-net backup for a Cortex instance. Cross-platform via
+  PowerShell 7+ (pwsh) on Windows, Linux, or macOS — no external modules required.
 
 .DESCRIPTION
+  The recommended default layout keeps the active instance as a plain local Git
+  repository (not inside a cloud-synced folder) and relies on this script to push
+  periodic snapshots to a cloud-synced backup destination (OneDrive, iCloud Drive,
+  Dropbox, rclone-mounted storage, etc. — any folder that is itself synced/backed
+  up externally). This keeps Git operations fast and conflict-free while still
+  getting off-machine backup coverage.
+
   Writes, to -DestinationPath:
     - {name}.bundle   full Git history, restorable with `git clone` on the bundle
     - {name}.zip       flat snapshot of the working tree (human-readable fallback)
     - manifest.json    timestamp, commit SHA, file count, template version
 
-  Keeps a rolling "latest" copy plus a timestamped copy under "history/".
+  Keeps a rolling "latest" copy plus a timestamped copy under "history/". Use
+  restore.ps1 to recover from either.
 
 .PARAMETER RootPath
   Instance root (a Git repository). Defaults to the parent of _meta.
 
 .PARAMETER DestinationPath
-  Where to write backups, e.g. an instance-specific folder in OneDrive.
+  Where to write backups, e.g. a cloud-synced folder. Defaults to
+  `_meta/config.json` -> `backupDestination` if not supplied.
+
+.EXAMPLE
+  .\_meta\scripts\backup.ps1
+  Uses the destination recorded in _meta/config.json.
 
 .EXAMPLE
   .\_meta\scripts\backup.ps1 -DestinationPath "C:\Users\me\OneDrive\CortexBackups\work-cortex"
@@ -25,11 +36,20 @@
 
 param(
   [string]$RootPath = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path,
-  [Parameter(Mandatory=$true)]
   [string]$DestinationPath
 )
 
 $ErrorActionPreference = "Stop"
+
+$configPath = Join-Path $RootPath "_meta/config.json"
+if (-not $DestinationPath) {
+  if (Test-Path $configPath) {
+    $DestinationPath = (Get-Content $configPath -Raw | ConvertFrom-Json).backupDestination
+  }
+  if ([string]::IsNullOrWhiteSpace($DestinationPath)) {
+    throw "No -DestinationPath given and _meta/config.json has no 'backupDestination' set. Provide -DestinationPath or set backupDestination in config.json."
+  }
+}
 
 $name = Split-Path -Leaf $RootPath
 $latestDir = Join-Path $DestinationPath "latest"
@@ -47,9 +67,9 @@ try {
   if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
   Compress-Archive -Path (Join-Path $RootPath "*") -DestinationPath $zipPath -Force
 
-  $fileCount = (Get-ChildItem -Path $RootPath -Recurse -File | Where-Object { $_.FullName -notmatch '\\\.git\\' }).Count
+  $gitSegment = [regex]::Escape([IO.Path]::DirectorySeparatorChar) + '\.git' + [regex]::Escape([IO.Path]::DirectorySeparatorChar)
+  $fileCount = (Get-ChildItem -Path $RootPath -Recurse -File | Where-Object { $_.FullName -notmatch $gitSegment }).Count
   $templateVersion = $null
-  $configPath = Join-Path $RootPath "_meta\config.json"
   if (Test-Path $configPath) {
     $templateVersion = (Get-Content $configPath -Raw | ConvertFrom-Json).templateVersion
   }

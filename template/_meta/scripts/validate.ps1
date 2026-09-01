@@ -26,7 +26,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $contentFolders = @("10-projects","20-areas","30-tasks","40-people","50-meetings","60-decisions","70-reference","80-journal")
-$schemaDir = Join-Path $RootPath "_meta\schemas"
+$schemaDir = Join-Path $RootPath (Join-Path "_meta" "schemas")
 $errors = @()
 $seenIds = @{}
 

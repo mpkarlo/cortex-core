@@ -17,7 +17,14 @@
   secrets, no customer PII beyond redacted references."
 
 .PARAMETER TargetPath
-  Where to create the instance, e.g. a folder inside OneDrive.
+  Where to create the instance. Recommended: a plain local path outside any
+  cloud-synced folder (see -BackupDestination for how backups are handled instead).
+
+.PARAMETER BackupDestination
+  Optional. A cloud-synced folder (or other externally-backed-up location) that
+  _meta/scripts/backup.ps1 will write snapshots to by default. Recorded in
+  _meta/config.json -> backupDestination. Can be left blank and supplied later,
+  or overridden per-invocation with backup.ps1 -DestinationPath.
 
 .PARAMETER Timezone
   IANA or Windows timezone label used for {{TIMEZONE}} tokens.
@@ -28,7 +35,8 @@
 .EXAMPLE
   .\init.ps1 -InstanceName "work-cortex" -Owner "Karlo" -Profile work `
              -Classification "Internal - personal work notes" `
-             -TargetPath "C:\Users\karlom\OneDrive - Microsoft\Cortex\work-cortex" `
+             -TargetPath "C:\Users\karlom\Cortex\work-cortex" `
+             -BackupDestination "C:\Users\karlom\OneDrive - Microsoft\CortexBackups\work-cortex" `
              -Timezone "Eastern Standard Time"
 #>
 
@@ -38,6 +46,7 @@ param(
   [Parameter(Mandatory=$true)] [ValidateSet("work","personal")] [string]$Profile,
   [string]$Classification = "Unclassified - set this before adding real content",
   [Parameter(Mandatory=$true)] [string]$TargetPath,
+  [string]$BackupDestination = "",
   [string]$Timezone = "UTC",
   [string]$Remote
 )
@@ -62,19 +71,20 @@ if (Test-Path $changelogPath) {
 }
 
 $tokenMap = @{
-  "{{INSTANCE_NAME}}"   = $InstanceName
-  "{{OWNER}}"           = $Owner
-  "{{PROFILE}}"         = $Profile
-  "{{CLASSIFICATION}}"  = $Classification
-  "{{CREATED_DATE}}"    = $today
-  "{{TEMPLATE_VERSION}}"= $templateVersion
-  "{{TIMEZONE}}"        = $Timezone
+  "{{INSTANCE_NAME}}"      = $InstanceName
+  "{{OWNER}}"              = $Owner
+  "{{PROFILE}}"            = $Profile
+  "{{CLASSIFICATION}}"     = $Classification
+  "{{CREATED_DATE}}"       = $today
+  "{{TEMPLATE_VERSION}}"   = $templateVersion
+  "{{TIMEZONE}}"           = $Timezone
+  "{{BACKUP_DESTINATION}}" = $BackupDestination
 }
 
 $filesToStamp = @(
   "README.md",
   "AGENTS.md",
-  ".github\copilot-instructions.md"
+  (Join-Path ".github" "copilot-instructions.md")
 ) | ForEach-Object { Join-Path $TargetPath $_ } | Where-Object { Test-Path $_ }
 
 foreach ($f in $filesToStamp) {
@@ -85,11 +95,12 @@ foreach ($f in $filesToStamp) {
   Set-Content -Path $f -Value $content -NoNewline
 }
 
-$configTemplatePath = Join-Path $TargetPath "_meta\config.json.template"
-$configPath = Join-Path $TargetPath "_meta\config.json"
+$configTemplatePath = Join-Path $TargetPath (Join-Path "_meta" "config.json.template")
+$configPath = Join-Path $TargetPath (Join-Path "_meta" "config.json")
 $configContent = Get-Content -Path $configTemplatePath -Raw
 foreach ($token in $tokenMap.Keys) {
-  $configContent = $configContent -replace [regex]::Escape($token), $tokenMap[$token]
+  $jsonSafeValue = $tokenMap[$token] -replace '\\', '\\'
+  $configContent = $configContent -replace [regex]::Escape($token), $jsonSafeValue
 }
 Set-Content -Path $configPath -Value $configContent -NoNewline
 Remove-Item $configTemplatePath
@@ -115,6 +126,11 @@ try {
   Write-Host "Instance created and committed at $TargetPath" -ForegroundColor Green
   if ($Remote) {
     Write-Host "Remote 'origin' set to $Remote — push when ready: git push -u origin main" -ForegroundColor Cyan
+  }
+  if ([string]::IsNullOrWhiteSpace($BackupDestination)) {
+    Write-Host "No -BackupDestination set. Set _meta/config.json -> backupDestination later, or pass -DestinationPath explicitly to backup.ps1." -ForegroundColor Yellow
+  } else {
+    Write-Host "Backups will default to: $BackupDestination (run _meta/scripts/backup.ps1 to snapshot)" -ForegroundColor Cyan
   }
 } finally {
   Pop-Location
