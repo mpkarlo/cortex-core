@@ -1,0 +1,10 @@
+{
+  "instanceName": "{{INSTANCE_NAME}}",
+  "owner": "{{OWNER}}",
+  "profile": "{{PROFILE}}",
+  "classification": "{{CLASSIFICATION}}",
+  "createdDate": "{{CREATED_DATE}}",
+  "templateVersion": "{{TEMPLATE_VERSION}}",
+  "mediaLibraryUrl": "",
+  "timezone": "{{TIMEZONE}}"
+}

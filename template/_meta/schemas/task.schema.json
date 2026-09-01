@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "task.schema.json",
+  "allOf": [{ "$ref": "common.schema.json" }],
+  "type": "object",
+  "properties": {
+    "dueDate": { "type": "string", "format": "date" },
+    "relatedProjects": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "priority": {
+      "type": "string",
+      "enum": ["low", "medium", "high"]
+    }
+  }
+}

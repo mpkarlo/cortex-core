@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "person.schema.json",
+  "allOf": [{ "$ref": "common.schema.json" }],
+  "type": "object",
+  "properties": {
+    "role": { "type": "string" },
+    "org": { "type": "string" },
+    "relatedProjects": {
+      "type": "array",
+      "items": { "type": "string", "description": "project-* id" }
+    }
+  }
+}

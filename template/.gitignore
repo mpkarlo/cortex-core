@@ -1,0 +1,9 @@
+# Ignore instance-local derived/generated data. Never gitignore canonical content.
+_meta/index.json
+_meta/index.sqlite
+_meta/cache/
+*.tmp
+
+# OS/editor noise
+Thumbs.db
+.DS_Store

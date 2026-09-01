@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "index.schema.json",
+  "title": "Derived index contract consumed by tools (webui, timeline, etc.)",
+  "description": "Rebuildable, gitignored. Never hand-edited. Any tool should be able to render a useful view from this file alone, without parsing Markdown directly.",
+  "type": "object",
+  "required": ["generatedAt", "templateVersion", "notes"],
+  "properties": {
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "templateVersion": { "type": "string" },
+    "notes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "status", "path", "title"],
+        "properties": {
+          "id": { "type": "string" },
+          "type": { "type": "string" },
+          "status": { "type": "string" },
+          "path": { "type": "string", "description": "repo-relative path" },
+          "title": { "type": "string" },
+          "created": { "type": "string" },
+          "updated": { "type": "string" },
+          "tags": { "type": "array", "items": { "type": "string" } },
+          "links": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "ids of notes this note links to"
+          }
+        }
+      }
+    }
+  }
+}

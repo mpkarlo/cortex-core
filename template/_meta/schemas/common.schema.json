@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "common.schema.json",
+  "title": "Common frontmatter fields required on every note",
+  "type": "object",
+  "required": ["id", "type", "status", "created", "updated"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "description": "Stable identifier, {type}-{slug} or {type}-{yyyymmdd}-{slug}"
+    },
+    "type": {
+      "type": "string",
+      "enum": ["project", "area", "task", "person", "meeting", "decision", "reference", "journal"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["active", "paused", "done", "archived"]
+    },
+    "created": { "type": "string", "format": "date" },
+    "updated": { "type": "string", "format": "date" },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["url", "title"],
+        "properties": {
+          "ref": { "type": "string" },
+          "url": { "type": "string" },
+          "title": { "type": "string" }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "project.schema.json",
+  "allOf": [{ "$ref": "common.schema.json" }],
+  "type": "object",
+  "required": ["owner"],
+  "properties": {
+    "owner": { "type": "string" },
+    "relatedPeople": {
+      "type": "array",
+      "items": { "type": "string", "description": "person-* id" }
+    },
+    "dueDate": { "type": "string", "format": "date" }
+  }
+}

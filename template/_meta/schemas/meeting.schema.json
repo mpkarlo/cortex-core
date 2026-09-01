@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "meeting.schema.json",
+  "allOf": [{ "$ref": "common.schema.json" }],
+  "type": "object",
+  "required": ["date", "attendees"],
+  "properties": {
+    "date": { "type": "string", "format": "date" },
+    "attendees": {
+      "type": "array",
+      "items": { "type": "string", "description": "person-* id" }
+    },
+    "relatedProjects": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

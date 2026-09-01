@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "decision.schema.json",
+  "allOf": [{ "$ref": "common.schema.json" }],
+  "type": "object",
+  "required": ["date", "decisionStatus"],
+  "properties": {
+    "date": { "type": "string", "format": "date" },
+    "decisionStatus": {
+      "type": "string",
+      "enum": ["proposed", "accepted", "superseded", "rejected"]
+    },
+    "relatedProjects": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "supersedes": { "type": "string" }
+  }
+}
