@@ -100,7 +100,7 @@ $instanceReadme = @"
 
 A Cortex instance for $Owner ($Profile). See AGENTS.md for agent roles and
 write rules, and .github/copilot-instructions.md for how AI tools should use
-this repository. Generated from cortex-template v$templateVersion on $today.
+this repository. Generated from cortex-core v$templateVersion on $today.
 "@
 Set-Content -Path (Join-Path $TargetPath "README.md") -Value $instanceReadme
 
@@ -111,7 +111,7 @@ try {
     git remote add origin $Remote
   }
   git add -A
-  git commit -m "Initialize $InstanceName from cortex-template v$templateVersion" | Out-Null
+  git commit -m "Initialize $InstanceName from cortex-core v$templateVersion" | Out-Null
   Write-Host "Instance created and committed at $TargetPath" -ForegroundColor Green
   if ($Remote) {
     Write-Host "Remote 'origin' set to $Remote — push when ready: git push -u origin main" -ForegroundColor Cyan

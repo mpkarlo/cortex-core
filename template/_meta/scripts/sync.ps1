@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Syncs _meta/ scaffolding between a Cortex instance and the cortex-template
+  Syncs _meta/ scaffolding between a Cortex instance and the cortex-core
   upstream repository. Content folders (00-inbox..90-archive, assets/) are never
   touched by this script in either direction.
 
@@ -16,21 +16,21 @@
   Requires -File and -TemplateRepoPath.
 
 .PARAMETER TemplateRemoteUrl
-  URL of the cortex-template repository. Only needed the first time (adds a
+  URL of the cortex-core repository. Only needed the first time (adds a
   'template' remote) or if it has changed.
 
 .PARAMETER TemplateRepoPath
-  Local path to a clone of cortex-template, used for -Push.
+  Local path to a clone of cortex-core, used for -Push.
 
 .PARAMETER File
   Repo-relative path of the single file to push upstream, e.g.
   "_meta/templates/meeting.md".
 
 .EXAMPLE
-  .\_meta\scripts\sync.ps1 -Pull -TemplateRemoteUrl "https://github.com/you/cortex-template.git"
+  .\_meta\scripts\sync.ps1 -Pull -TemplateRemoteUrl "https://github.com/you/cortex-core.git"
 
 .EXAMPLE
-  .\_meta\scripts\sync.ps1 -Push -File "_meta/scripts/validate.ps1" -TemplateRepoPath "C:\Code\cortex-template"
+  .\_meta\scripts\sync.ps1 -Push -File "_meta/scripts/validate.ps1" -TemplateRepoPath "C:\Code\cortex-core"
 #>
 
 param(

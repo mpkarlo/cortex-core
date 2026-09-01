@@ -1,4 +1,4 @@
-# Changelog — cortex-template
+# Changelog — cortex-core
 
 All notable changes to the template scaffolding (schemas, note templates, scripts,
 agent instructions) are recorded here. Instance content is never recorded here.

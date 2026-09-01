@@ -63,8 +63,8 @@ or other tools.
 ## Creating an instance
 
 ```powershell
-git clone https://github.com/<you>/cortex-template.git
-.\cortex-template\init.ps1 -InstanceName "work-cortex" `
+git clone https://github.com/<you>/cortex-core.git
+.\cortex-core\init.ps1 -InstanceName "work-cortex" `
                             -Owner "Karlo" `
                             -Profile work `
                             -TargetPath "C:\Users\karlom\OneDrive - Microsoft\Cortex\work-cortex" `
@@ -85,7 +85,7 @@ inside a generated instance, and "Template evolution" below.
 
 ## Template evolution (fork/pull model)
 
-- This repository (`cortex-template`) only ever contains scaffolding: folder
+- This repository (`cortex-core`) only ever contains scaffolding: folder
   structure, schemas, note templates, scripts, and agent instructions. It never
   contains real notes.
 - An instance pulls improvements from this repo with `sync.ps1 -Pull`, which updates

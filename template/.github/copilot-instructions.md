@@ -33,5 +33,5 @@ defines which role you are acting as and what you may write.
 ## Scope
 
 This instance's content is classified per `_meta/config.json`. Do not copy its
-content into the `cortex-template` repository, into another instance, or into any
+content into the `cortex-core` repository, into another instance, or into any
 external system not already approved for this classification.
