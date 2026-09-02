@@ -1,0 +1,42 @@
+name: Bug
+description: Report a bug or problem to be fixed
+title: "fix: "
+labels:
+  - bug
+  - prio:p1
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What is broken or behaving incorrectly?
+      placeholder: Describe the bug.
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact
+      description: How this affects usage or development.
+      placeholder: What does this break and how severe is it?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: Steps to reproduce the issue.
+      placeholder: |
+        1. Go to ...
+        2. Run ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: first_step
+    attributes:
+      label: First step toward a fix
+      description: The smallest practical first step to address this.
+      placeholder: What should be done first?
+    validations:
+      required: true
