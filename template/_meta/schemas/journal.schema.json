@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "journal.schema.json",
+  "allOf": [
+    { "$ref": "common.schema.json" },
+    {
+      "type": "object",
+      "required": ["date"],
+      "properties": {
+        "type": { "const": "journal" },
+        "date": { "type": "string", "format": "date" }
+      }
+    }
+  ]
+}

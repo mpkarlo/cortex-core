@@ -1,8 +1,9 @@
 <#
 .SYNOPSIS
-  Dependency-free test suite for cortex-core scripts (init, new-note, validate,
-  backup, restore, sync). No Pester or other test framework required — runs under
-  plain PowerShell 7+ (pwsh) on Windows, Linux, or macOS.
+  Dependency-free test suite for cortex-core scripts (init, new-note, capture,
+  librarian triage, snapshot, validate, backup, restore, sync). No Pester or
+  other test framework required - runs under plain PowerShell 7+ (pwsh) on
+  Windows, Linux, or macOS.
 
 .DESCRIPTION
   Creates disposable instances and backup destinations under the system temp
@@ -91,6 +92,43 @@ try {
   $meetingFiles = Get-ChildItem (Join-Path $instancePath "50-meetings") -Filter "meeting-*.md"
   Assert-True ($meetingFiles.Count -eq 1 -and $meetingFiles[0].Name -match '^meeting-\d{8}-weekly-sync\.md$') "new-note.ps1 uses dated filename convention for meetings"
 
+  & (Join-Path $instancePath (Join-Path "_meta" (Join-Path "scripts" "new-note.ps1"))) `
+    -Type area -Title "Engineering Practice" -RootPath $instancePath | Out-Null
+  Assert-True (Test-Path (Join-Path $instancePath (Join-Path "20-areas" "area-engineering-practice.md"))) "new-note.ps1 creates area notes"
+
+  # --- capture.ps1 (zero-decision inbox drop) ----------------------------------
+  $capturedPath = & (Join-Path $instancePath (Join-Path "_meta" (Join-Path "scripts" "capture.ps1"))) `
+    -Source "Copilot chat" `
+    -Content "Captured `$5 note from another repository chat." `
+    -RootPath $instancePath -PassThru
+  Assert-True (Test-Path $capturedPath) "capture.ps1 creates an inbox file"
+  Assert-True ($capturedPath -match [regex]::Escape((Join-Path "00-inbox" ""))) "capture.ps1 files into 00-inbox by default"
+  $capturedContent = Get-Content $capturedPath -Raw
+  Assert-True ($capturedContent -match 'status: unfiled') "capture.ps1 stamps status: unfiled"
+  Assert-True ($capturedContent -match 'source: "Copilot chat"') "capture.ps1 records the source"
+  Assert-True ($capturedContent -match 'Captured \$5 note') "capture.ps1 preserves literal dollar signs in captured text"
+  Assert-True ($capturedContent -notmatch 'type:') "capture.ps1 makes no type decision at capture time"
+
+  # --- librarian-list-inbox.ps1 -------------------------------------------------
+  $inboxJson = & (Join-Path $instancePath (Join-Path "_meta" (Join-Path "scripts" "librarian-list-inbox.ps1"))) -RootPath $instancePath | Out-String
+  $inboxEntries = $inboxJson | ConvertFrom-Json
+  Assert-True ($inboxEntries.Count -eq 1) "librarian-list-inbox.ps1 lists the unfiled capture"
+  Assert-True ($inboxEntries[0].source -eq "Copilot chat") "librarian-list-inbox.ps1 surfaces the source"
+
+  # --- librarian-archive-inbox-entry.ps1 ----------------------------------------
+  & (Join-Path $instancePath (Join-Path "_meta" (Join-Path "scripts" "librarian-archive-inbox-entry.ps1"))) `
+    -Path $capturedPath -FiledTo "project-test-project" -RootPath $instancePath | Out-Null
+  Assert-True (-not (Test-Path $capturedPath)) "librarian-archive-inbox-entry.ps1 removes the entry from 00-inbox"
+  $archivedPath = Join-Path $instancePath (Join-Path "90-archive" (Join-Path "inbox" (Split-Path $capturedPath -Leaf)))
+  Assert-True (Test-Path $archivedPath) "librarian-archive-inbox-entry.ps1 moves the entry to 90-archive/inbox"
+  $archivedContent = Get-Content $archivedPath -Raw
+  Assert-True ($archivedContent -match 'status: filed') "librarian-archive-inbox-entry.ps1 marks the entry as filed"
+  Assert-True ($archivedContent -match 'filedTo: \["project-test-project"\]') "librarian-archive-inbox-entry.ps1 records where the entry was filed"
+
+  $inboxJsonAfter = & (Join-Path $instancePath (Join-Path "_meta" (Join-Path "scripts" "librarian-list-inbox.ps1"))) -RootPath $instancePath | Out-String
+  $inboxEntriesAfter = $inboxJsonAfter | ConvertFrom-Json
+  Assert-True ($null -eq $inboxEntriesAfter -or @($inboxEntriesAfter).Count -eq 0) "librarian-list-inbox.ps1 no longer lists an archived entry"
+
   # --- validate.ps1 (populated instance) --------------------------------------
   & (Join-Path $instancePath (Join-Path "_meta" (Join-Path "scripts" "validate.ps1"))) -RootPath $instancePath
   Assert-True ($LASTEXITCODE -eq 0) "validate.ps1 passes after adding valid notes"
@@ -104,8 +142,21 @@ try {
   & (Join-Path $instancePath (Join-Path "_meta" (Join-Path "scripts" "validate.ps1"))) -RootPath $instancePath
   Assert-True ($LASTEXITCODE -eq 0) "validate.ps1 passes again after reverting the broken link"
 
-  git -C $instancePath add -A
-  git -C $instancePath commit -m "Add test notes" -q
+  & (Join-Path $instancePath (Join-Path "_meta" (Join-Path "scripts" "snapshot.ps1"))) `
+    -Reason "test notes" -RootPath $instancePath | Out-Null
+  $latestCommit = (git -C $instancePath log -1 --pretty=%s).Trim()
+  Assert-True ($latestCommit -match '^test notes \(') "snapshot.ps1 commits note changes on main with an auto-generated message"
+
+  git -C $instancePath switch -c test-branch -q
+  $mainOnlyRefused = $false
+  try {
+    & (Join-Path $instancePath (Join-Path "_meta" (Join-Path "scripts" "snapshot.ps1"))) `
+      -Reason "Should fail" -RootPath $instancePath 2>$null
+  } catch {
+    $mainOnlyRefused = $true
+  }
+  Assert-True $mainOnlyRefused "snapshot.ps1 refuses to save from non-main branches"
+  git -C $instancePath switch main -q
 
   # --- backup.ps1 --------------------------------------------------------------
   & (Join-Path $instancePath (Join-Path "_meta" (Join-Path "scripts" "backup.ps1"))) -RootPath $instancePath
@@ -124,18 +175,18 @@ try {
   # --- backup.ps1 falls back to config.json backupDestination ------------------
   Remove-Item $backupPath -Recurse -Force
   & (Join-Path $instancePath (Join-Path "_meta" (Join-Path "scripts" "backup.ps1"))) -RootPath $instancePath
-  Assert-True (Test-Path (Join-Path $backupPath "latest" "manifest.json")) "backup.ps1 falls back to config.json's backupDestination when -DestinationPath is omitted"
+  Assert-True (Test-Path (Join-Path $backupPath (Join-Path "latest" "manifest.json"))) "backup.ps1 falls back to config.json's backupDestination when -DestinationPath is omitted"
 
   # --- restore.ps1 (from bundle) -------------------------------------------------
   & (Join-Path $instancePath (Join-Path "_meta" (Join-Path "scripts" "restore.ps1"))) `
     -SourcePath $backupPath -TargetPath $restorePathBundle -FromBundle
   Assert-True (Test-Path (Join-Path $restorePathBundle ".git")) "restore.ps1 -FromBundle restores a Git repo"
-  Assert-True (Test-Path (Join-Path $restorePathBundle "10-projects" "project-test-project.md")) "restore.ps1 -FromBundle restores note content"
+  Assert-True (Test-Path (Join-Path $restorePathBundle (Join-Path "10-projects" "project-test-project.md"))) "restore.ps1 -FromBundle restores note content"
 
   # --- restore.ps1 (from zip) -----------------------------------------------------
   & (Join-Path $instancePath (Join-Path "_meta" (Join-Path "scripts" "restore.ps1"))) `
     -SourcePath $backupPath -TargetPath $restorePathZip -FromZip
-  Assert-True (Test-Path (Join-Path $restorePathZip "10-projects" "project-test-project.md")) "restore.ps1 -FromZip restores note content"
+  Assert-True (Test-Path (Join-Path $restorePathZip (Join-Path "10-projects" "project-test-project.md"))) "restore.ps1 -FromZip restores note content"
 
   # --- restore.ps1 refuses to overwrite non-empty target without -Force -----------
   $refused = $false

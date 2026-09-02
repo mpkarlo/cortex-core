@@ -1,7 +1,7 @@
 <#
 .SYNOPSIS
   Restores a Cortex instance from a backup created by backup.ps1. Cross-platform
-  via PowerShell 7+ (pwsh). Read-only against the backup destination — never
+  via PowerShell 7+ (pwsh). Read-only against the backup destination - never
   deletes or overwrites existing backup artifacts.
 
 .DESCRIPTION
