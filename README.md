@@ -287,6 +287,11 @@ Runs a dependency-free end-to-end check of `init.ps1`, `new-note.ps1`,
 instances (cleaned up automatically). Run this after changing any script in
 `_meta/scripts/` or `init.ps1` before committing.
 
+`tools/scripts/check-template-purity.ps1` guards against `template/` ever
+accumulating real instance data (filled-in notes, a stamped `_meta/config.json`,
+etc.) — it runs automatically in CI (`.github/workflows/template-purity.yml`)
+on every pull request and push to `main`.
+
 ## License
 
 Licensed under the [GNU General Public License v3.0](LICENSE). You are free to use,

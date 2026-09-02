@@ -1,0 +1,17 @@
+name: Template purity check
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  check-template-purity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check template/ contains no real instance data
+        shell: pwsh
+        run: ./tools/scripts/check-template-purity.ps1
