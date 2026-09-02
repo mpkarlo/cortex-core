@@ -1,0 +1,32 @@
+name: Idea
+description: Capture an idea for possible future implementation
+title: "idea: "
+labels:
+  - idea
+  - icebox
+  - prio:p2
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: Idea
+      description: Describe the idea clearly and briefly.
+      placeholder: What is the idea?
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why it might matter
+      description: Why this might be valuable if implemented.
+      placeholder: What problem or opportunity does this address?
+    validations:
+      required: true
+  - type: textarea
+    id: first_step
+    attributes:
+      label: First step if I ever do it
+      description: The smallest first implementation step.
+      placeholder: What's the first concrete step?
+    validations:
+      required: true
