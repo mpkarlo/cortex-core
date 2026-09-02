@@ -84,7 +84,8 @@ $tokenMap = @{
 $filesToStamp = @(
   "README.md",
   "AGENTS.md",
-  (Join-Path ".github" "copilot-instructions.md")
+  (Join-Path ".github" "copilot-instructions.md"),
+  (Join-Path ".github" "github-app.yml")
 ) | ForEach-Object { Join-Path $TargetPath $_ } | Where-Object { Test-Path $_ }
 
 foreach ($f in $filesToStamp) {
@@ -125,7 +126,7 @@ try {
   git commit -m "Initialize $InstanceName from cortex-core v$templateVersion" | Out-Null
   Write-Host "Instance created and committed at $TargetPath" -ForegroundColor Green
   if ($Remote) {
-    Write-Host "Remote 'origin' set to $Remote — push when ready: git push -u origin main" -ForegroundColor Cyan
+    Write-Host "Remote 'origin' set to $Remote - push when ready: git push -u origin main" -ForegroundColor Cyan
   }
   if ([string]::IsNullOrWhiteSpace($BackupDestination)) {
     Write-Host "No -BackupDestination set. Set _meta/config.json -> backupDestination later, or pass -DestinationPath explicitly to backup.ps1." -ForegroundColor Yellow

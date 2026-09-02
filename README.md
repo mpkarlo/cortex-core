@@ -26,16 +26,22 @@ created by copying `template/` and are where actual content lives.
    path. Paths should rarely change once created.
 3. **Canonical vs. derived.** Frontmatter + Markdown content is canonical and committed.
    Indexes, embeddings, and caches are derived, rebuildable, and gitignored.
-4. **One writer.** A single curator agent role normalizes and files content. Other
-   agents propose; the curator commits. See `AGENTS.md`.
-5. **Deterministic validation.** A dependency-free script checks schema compliance,
+4. **Capture and organize are separate.** Capturing something costs the user zero
+   organizational decisions — it's a timestamped drop into `00-inbox/`. Deciding
+   type, tags, folder, and links is a periodic **Librarian** pass, not something that
+   blocks capture. See `AGENTS.md`.
+5. **Git is a rollback mechanism, not curated history.** Content edits should be rare;
+   re-filing/reorganization is the common write. Every capture and every Librarian
+   pass ends in one auto-generated commit on `main` — no commit-message authoring, no
+   feature branches, no PRs for routine notes.
+6. **Deterministic validation.** A dependency-free script checks schema compliance,
    duplicate IDs, and broken links — no AI required to catch structural errors.
 
 ## Structure
 
 ```
 template/
-  00-inbox/        unsorted capture, triaged by the curator agent
+  00-inbox/        zero-decision raw captures, triaged by the periodic Librarian pass
   10-projects/      active and past work/personal projects
   20-areas/         ongoing areas of responsibility (not time-bound)
   30-tasks/         standalone tasks not tied to a project
@@ -44,16 +50,20 @@ template/
   60-decisions/     decision records
   70-reference/     durable reference material
   80-journal/       dated journal / log entries
-  90-archive/       retired content, kept for history
+  90-archive/       retired content, kept for history (includes archived inbox entries)
   assets/           small durable media committed to the repo
   _meta/
     templates/      note templates for each type
     schemas/        frontmatter field definitions (JSON)
-    scripts/        validate.ps1, new-note.ps1, backup.ps1, restore.ps1, sync.ps1
+    scripts/        capture.ps1, snapshot.ps1, librarian-list-inbox.ps1,
+                    librarian-archive-inbox-entry.ps1, new-note.ps1, validate.ps1,
+                    backup.ps1, restore.ps1, sync.ps1
     ui/             reserved for a future local UI/visualization layer
-  AGENTS.md          agent roles and write permissions
+  AGENTS.md          agent roles (Reader/Curator/Librarian/Archivist) and the
+                     capture-vs-organize, git-as-snapshot policies
   .github/
     copilot-instructions.md
+    github-app.yml   Copilot app instructions + Validate/Snapshot manual scripts
 
 tools/
   webui/            optional, independent — local UI (empty until built)
@@ -62,8 +72,9 @@ tools/
   scripts/          small standalone utilities usable without any instance
 
 tests/
-  run-tests.ps1     dependency-free test suite covering init/new-note/validate/
-                    backup/restore end-to-end; run with `pwsh ./tests/run-tests.ps1`
+  run-tests.ps1     dependency-free test suite covering init/new-note/capture/
+                    librarian/snapshot/validate/backup/restore end-to-end; run
+                    with `pwsh ./tests/run-tests.ps1`
 ```
 
 Each folder under `tools/` is independent: no tool depends on another tool. Every tool
@@ -91,7 +102,7 @@ Default recommendation: a plain local path **outside** any cloud-synced folder
 (OneDrive, iCloud Drive, Dropbox, etc.). Keeping the working Git repo off a
 sync client avoids sync-induced file locks/conflicts during agent-driven bulk
 edits. Off-machine backup coverage instead comes from periodic snapshots to a
-cloud-synced destination — see step 6 and "Backups" below. Do not nest the
+cloud-synced destination — see step 8 and "Backups" below. Do not nest the
 instance inside `cortex-core` itself.
 
 ```powershell
@@ -117,7 +128,7 @@ $backupDestination = "C:\Users\<you>\OneDrive - Microsoft\CortexBackups\work-cor
   target without needing it passed every time. You can set or change it later by
   editing `_meta/config.json` directly.
 - Omit `-Remote` for now — add it later once you've created a remote for the
-  instance itself (see step 6). The instance does not need to share a remote
+  instance itself (see step 8). The instance does not need to share a remote
   with `cortex-core`.
 
 This copies `template/` to `$target`, stamps `{{OWNER}}`, `{{INSTANCE_NAME}}`,
@@ -137,19 +148,25 @@ cd $target
 This should report `0 errors` on a freshly created instance. Run it again any time
 after an agent (or you) make bulk edits.
 
-### 5. Create your first note — via an AI prompt
+### 5. Capture your first note — via an AI prompt, zero decisions
 
-The primary way to add content is by prompting an AI agent (e.g. "capture this as
-a project note about X"), not by running a script yourself. Point an agent at the
-instance and describe what you want captured; the agent assumes the Curator role
-described in `AGENTS.md` and calls `_meta/scripts/new-note.ps1` on your behalf,
-filing it under the right folder with frontmatter already filled in. If you
-supply your own freeform text or a reference document, the agent saves it as a
-linked attachment alongside the note rather than folding it into the note body —
-see "Primary intake path" in `AGENTS.md`.
+The primary way to add content is by prompting an AI agent from a **GitHub Copilot
+chat** (e.g. "capture this: ..."), not by running a script yourself, and not by
+deciding a type/folder/tags up front. Point an agent at the instance; it assumes
+the Curator role described in `AGENTS.md` and runs `_meta/scripts/capture.ps1`,
+which drops your content into `00-inbox/` with just a timestamp and a source
+label. Organizing it into the right project/task/person/etc. note happens later,
+in the periodic Librarian pass (step 6) — not at capture time.
 
-Running `new-note.ps1` directly still works and is useful for scripting or
-testing, but is not the expected day-to-day interface:
+```powershell
+.\_meta\scripts\capture.ps1 -Source "Copilot chat" `
+  -Content "Whatever you want to remember, verbatim."
+```
+
+If you *do* want to skip the inbox and file something immediately under a
+specific project, type, or tag, just say so in the prompt — the agent will use
+`_meta/scripts/new-note.ps1` directly instead. This is the exception, not the
+default.
 
 ```powershell
 .\_meta\scripts\new-note.ps1 -Type project -Title "My First Project"
@@ -158,9 +175,40 @@ testing, but is not the expected day-to-day interface:
 This creates `10-projects\project-my-first-project.md` from the project template.
 See `.github/copilot-instructions.md` for how Copilot-style tools should behave in
 this repository, and `AGENTS.md` for the full set of agent roles (Reader /
-Curator / Specialist / Archivist / Validator).
+Curator / Librarian / Archivist / Validator).
 
-### 6. Set up backups
+Either way, the agent finishes by running `_meta/scripts/snapshot.ps1`, which
+commits the batch to `main` with an auto-generated message — you never have to
+write or approve a commit message for routine notes.
+
+### 6. Schedule the Librarian
+
+Organization is a periodic pass, not a per-note decision. Set up a scheduled
+workflow (in this app: create the instance as a project, then use a workflow
+with a daily/weekly `interval`) with a prompt like:
+
+> Act as the Librarian per AGENTS.md: list unfiled entries in `00-inbox/`, file
+> each one into the right note (creating or merging as needed), archive the
+> original entry, look for other cleanup (stale statuses, duplicates, broken
+> links), validate, then snapshot the result.
+
+The Librarian pass files/tags/links inbox entries, merges duplicates, and
+archives stale content — then runs `_meta/scripts/validate.ps1` and
+`_meta/scripts/snapshot.ps1 -Reason "librarian reorg"` so the whole batch is one
+revertible commit. This should run **on its own**, not because you asked in the
+moment — see "Scheduling the Librarian" in `AGENTS.md`.
+
+### 7. Avoid stray branches
+
+Cortex instances only ever commit canonical notes to `main` — no feature
+branches or PRs for routine capture or Librarian passes. `snapshot.ps1` refuses
+to commit from any other branch, but it can't stop a host from checking the
+instance out somewhere else in the first place. **When opening a session
+against this instance, use a mode that works directly on the existing `main`
+checkout** (not a "worktree" mode that forks a new branch) — see "Avoiding
+stray branches" in `AGENTS.md` for why this matters and how to configure it.
+
+### 8. Set up backups
 
 Instances live outside cloud sync by default (step 2), so periodic backup to
 cloud storage is how you get off-machine coverage. Either run it yourself or ask
@@ -176,7 +224,7 @@ Writes a `.bundle` (full Git history), a `.zip` (flat fallback), and a
 `manifest.json` to that destination. See "Backups" below and
 `_meta/scripts/restore.ps1` for recovery.
 
-### 7. (Optional) Add a remote for the instance
+### 9. (Optional) Add a remote for the instance
 
 The instance is its own Git repository, independent of `cortex-core`. A remote is
 optional, but becomes necessary if you need the instance to **sync across
@@ -222,7 +270,7 @@ file-synced Git repo. This is unrelated to `-BackupDestination`/`backup.ps1`,
 which remains a separate, periodic safety-net snapshot even when a sync remote
 is in use.
 
-### 8. Repeat for a second instance
+### 10. Repeat for a second instance
 
 Run `init.ps1` again with a different `-InstanceName`, `-Profile`, `-TargetPath`,
 and `-BackupDestination` (e.g. `personal-cortex`). Each instance is independent;
@@ -283,9 +331,10 @@ pwsh ./tests/run-tests.ps1
 ```
 
 Runs a dependency-free end-to-end check of `init.ps1`, `new-note.ps1`,
-`validate.ps1`, `backup.ps1`, and `restore.ps1` against disposable, temp-directory
-instances (cleaned up automatically). Run this after changing any script in
-`_meta/scripts/` or `init.ps1` before committing.
+`capture.ps1`, `librarian-list-inbox.ps1`, `librarian-archive-inbox-entry.ps1`,
+`snapshot.ps1`, `validate.ps1`, `backup.ps1`, and `restore.ps1` against
+disposable, temp-directory instances (cleaned up automatically). Run this after
+changing any script in `_meta/scripts/` or `init.ps1` before committing.
 
 `tools/scripts/check-template-purity.ps1` guards against `template/` ever
 accumulating real instance data (filled-in notes, a stamped `_meta/config.json`,

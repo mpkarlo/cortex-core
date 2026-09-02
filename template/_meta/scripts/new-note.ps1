@@ -3,13 +3,16 @@
   Creates a new note from a _meta/templates/*.md template with tokens filled in.
 
 .PARAMETER Type
-  One of: project, person, meeting, decision, task, reference
+  One of: project, area, person, meeting, decision, task, reference, journal
 
 .PARAMETER Title
   Human-readable title, used to derive the slug and filled into the heading.
 
 .PARAMETER RootPath
   Instance root. Defaults to the parent of _meta.
+
+.PARAMETER PassThru
+  Writes the created note path to the pipeline instead of only printing a status line.
 
 .EXAMPLE
   .\_meta\scripts\new-note.ps1 -Type project -Title "Arbiter Rollout"
@@ -22,26 +25,30 @@
 
 param(
   [Parameter(Mandatory=$true)]
-  [ValidateSet("project","person","meeting","decision","task","reference")]
+  [ValidateSet("project","area","person","meeting","decision","task","reference","journal")]
   [string]$Type,
 
   [Parameter(Mandatory=$true)]
   [string]$Title,
 
-  [string]$RootPath = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
+  [string]$RootPath = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path,
+
+  [switch]$PassThru
 )
 
 $ErrorActionPreference = "Stop"
 
 $folderMap = @{
   project   = "10-projects"
+  area      = "20-areas"
   person    = "40-people"
   meeting   = "50-meetings"
   decision  = "60-decisions"
   task      = "30-tasks"
   reference = "70-reference"
+  journal   = "80-journal"
 }
-$datedTypes = @("meeting","decision","task")
+$datedTypes = @("meeting","decision","task","journal")
 
 function ConvertTo-Slug {
   param([string]$Text)
@@ -71,7 +78,7 @@ $targetFolder = Join-Path $RootPath $folderMap[$Type]
 $targetPath = Join-Path $targetFolder $fileName
 
 if (Test-Path $targetPath) {
-  throw "A note already exists at $targetPath — choose a different title or edit it directly."
+  throw "A note already exists at $targetPath - choose a different title or edit it directly."
 }
 
 $content = Get-Content -Path $templatePath -Raw
@@ -85,4 +92,8 @@ $content = $content -replace "\{\{OWNER\}\}", (
 
 New-Item -ItemType Directory -Force -Path $targetFolder | Out-Null
 Set-Content -Path $targetPath -Value $content -NoNewline
-Write-Host "Created $targetPath" -ForegroundColor Green
+if ($PassThru) {
+  Write-Output $targetPath
+} else {
+  Write-Host "Created $targetPath" -ForegroundColor Green
+}

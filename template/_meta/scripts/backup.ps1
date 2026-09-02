@@ -1,13 +1,13 @@
 <#
 .SYNOPSIS
   Optional periodic safety-net backup for a Cortex instance. Cross-platform via
-  PowerShell 7+ (pwsh) on Windows, Linux, or macOS — no external modules required.
+  PowerShell 7+ (pwsh) on Windows, Linux, or macOS - no external modules required.
 
 .DESCRIPTION
   The recommended default layout keeps the active instance as a plain local Git
   repository (not inside a cloud-synced folder) and relies on this script to push
   periodic snapshots to a cloud-synced backup destination (OneDrive, iCloud Drive,
-  Dropbox, rclone-mounted storage, etc. — any folder that is itself synced/backed
+  Dropbox, rclone-mounted storage, etc. - any folder that is itself synced/backed
   up externally). This keeps Git operations fast and conflict-free while still
   getting off-machine backup coverage.
 

@@ -1,0 +1,27 @@
+instructions: |
+  This is a Cortex instance: the user should be able to dump content in with
+  zero organizational decisions. For any freeform input (a prompt, a chat
+  wrap-up from another repo/session, an email, a document), run
+  .\_meta\scripts\capture.ps1 -Content "..." -Source "..." and stop there. Do
+  not ask the user to pick a folder, type, or tags first. Only file directly
+  with .\_meta\scripts\new-note.ps1 when the user gives explicit instructions
+  (a specific project, type, or tag to use).
+
+  Organization (deciding types/tags/folders for inbox entries, merging
+  duplicates, archiving stale notes) is a separate Librarian role that runs
+  periodically via a scheduled workflow or session automation, not something
+  triggered by routine chat. Only act as Librarian when explicitly invoked
+  that way. Full process in AGENTS.md.
+
+  Canonical content is committed to 'main' only, using
+  .\_meta\scripts\snapshot.ps1 (auto-generated commit message, no branches or
+  PRs for routine notes). Before writing, check the current branch; if it is
+  not 'main', stop and tell the user to reopen this instance in a mode that
+  checks out 'main' directly (not a separate worktree/feature branch) instead
+  of writing notes elsewhere. See "Avoiding stray branches" in AGENTS.md.
+
+scripts:
+  - name: Validate Cortex
+    command: pwsh .\_meta\scripts\validate.ps1
+  - name: Snapshot notes on main
+    command: pwsh .\_meta\scripts\snapshot.ps1
